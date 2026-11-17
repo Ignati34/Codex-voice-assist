@@ -71,7 +71,7 @@ function requestAppAccess(req, res) {
   if (hasAppAccess(req)) return true;
   securityHeaders(res);
   res.writeHead(401, {
-    'WWW-Authenticate': 'Basic realm="Учебный голосовой помощник", charset="UTF-8"',
+    'WWW-Authenticate': 'Basic realm="Voice Assistant Demo", charset="UTF-8"',
     'Cache-Control': 'no-store',
     'Content-Type': 'text/plain; charset=utf-8',
   });

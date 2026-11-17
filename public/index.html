@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f9f8" />
+    <meta name="description" content="Учебный голосовой помощник проверяет вымышленное расписание консультаций." />
+    <title>Голосовой помощник · Консультация</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Основная навигация">
+        <a class="brand" href="/" aria-label="Голосовой помощник, главная">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none"><path d="M5 16v8M12 9v22M19 4v32M26 12v16M33 16v8" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>
+          </span>
+          <span>Голосовой<br />помощник</span>
+        </a>
+
+        <nav class="nav-list" aria-label="Разделы приложения">
+          <button class="nav-item is-active" type="button" data-view="dialog" aria-current="page">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-5 4v-4.5a2.5 2.5 0 0 1-1-2V5.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            <span>Диалог</span>
+          </button>
+          <button class="nav-item" type="button" data-view="flow">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h9M18 7h2M4 17h2M11 17h9M13 4v6M8 14v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span>Этапы</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-note">
+          <span class="note-mark" aria-hidden="true">i</span>
+          <p>Учебный пример.<br />Запись сохраняется в демо-список.</p>
+        </div>
+      </aside>
+
+      <main class="main-column">
+        <header class="page-header">
+          <div>
+            <h1>Консультация</h1>
+            <p class="page-intro">Проверьте доступность времени голосом</p>
+          </div>
+          <div id="connectionStatus" class="connection-status" data-state="disconnected" role="status" aria-live="polite">
+            <span class="connection-dot" aria-hidden="true"></span>
+            <span id="connectionText">Разговор не начат</span>
+          </div>
+        </header>
+
+        <section class="dialog-view" data-panel="dialog" aria-label="Голосовой диалог">
+          <div class="conversation-toolbar">
+            <div id="stageStatus" class="stage-status" data-state="idle" role="status" aria-live="polite">
+              <span class="stage-dot" aria-hidden="true"></span>
+              <span id="stageText">Готов к разговору</span>
+            </div>
+            <button id="clearButton" class="text-button" type="button" disabled>Очистить диалог</button>
+          </div>
+
+          <div id="conversation" class="conversation" aria-live="polite" aria-relevant="additions text">
+            <div id="welcomeMessage" class="welcome-message">
+              <div class="assistant-avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M3.5 10v4M8 6v12M12 3v18M16 7v10M20.5 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <p class="message-label">Помощник</p>
+                <p>Начните разговор и спросите, например: «Можно завтра после шести?»</p>
+                <p class="muted-copy">Расписание учебное. Свободный слот можно добавить в локальный список демонстрационных записей.</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="playbackPanel" class="playback-panel" hidden>
+            <div class="playback-heading">
+              <span class="playback-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M11 5 6 9H3v6h3l5 4V5ZM15 9a4 4 0 0 1 0 6M17.5 6.5a8 8 0 0 1 0 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <strong id="playbackLabel">Синтезированный голос</strong>
+              <span class="playback-disclosure">Текст AI · голос синтезирует устройство</span>
+            </div>
+            <div class="playback-actions">
+              <div class="playback-track" aria-hidden="true"><span id="playbackProgress"></span></div>
+              <button id="stopSpeechButton" class="round-control" type="button" aria-label="Остановить озвучивание" title="Остановить озвучивание">
+                <svg viewBox="0 0 24 24" fill="none"><rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor"/></svg>
+              </button>
+              <button id="replayButton" class="round-control" type="button" aria-label="Повторить ответ голосом" title="Повторить ответ">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M20 11a8 8 0 0 0-14-5L4 8M4 4v4h4M4 13a8 8 0 0 0 14 5l2-2M20 20v-4h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="composer">
+            <div class="composer-controls">
+              <button id="recordButton" class="record-button" type="button" disabled>
+                <span class="record-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><rect x="8" y="3" width="8" height="12" rx="4" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </span>
+                <span id="recordButtonText">Начать запись реплики</span>
+              </button>
+              <span class="composer-divider" aria-hidden="true"></span>
+              <button id="sessionButton" class="session-button" type="button">Начать разговор</button>
+            </div>
+            <div class="composer-hint">
+              <span class="hint-icon" aria-hidden="true">i</span>
+              <p id="composerHint">Запись отправляется после остановки. Микрофон работает только во время реплики.</p>
+            </div>
+          </div>
+          <p id="errorMessage" class="error-message" role="alert" hidden></p>
+        </section>
+
+        <section class="flow-view" data-panel="flow" hidden aria-label="Этапы обработки запроса">
+          <div class="flow-heading">
+            <h2>Как проходит реплика</h2>
+            <p>Каскадная обработка: каждый этап можно увидеть и проверить отдельно.</p>
+          </div>
+          <ol class="flow-list">
+            <li><span class="flow-number">01</span><div><h3>Микрофон</h3><p>Пользователь нажимает кнопку, произносит реплику и останавливает запись.</p></div><span class="flow-arrow" aria-hidden="true">→</span></li>
+            <li><span class="flow-number">02</span><div><h3>STT — распознавание речи</h3><p>Сервер передаёт готовую запись сервису распознавания и получает текст.</p></div><span class="flow-arrow" aria-hidden="true">→</span></li>
+            <li><span class="flow-number">03</span><div><h3>AI-агент</h3><p>Модель определяет дату и время, затем вызывает отдельную функцию чтения расписания.</p></div><span class="flow-arrow" aria-hidden="true">→</span></li>
+            <li><span class="flow-number">04</span><div><h3>Запись в демо-список</h3><p>После проверки свободного слота клиент вводит имя и отдельно подтверждает создание локальной демонстрационной записи.</p></div><span class="flow-arrow" aria-hidden="true">→</span></li>
+            <li><span class="flow-number">05</span><div><h3>Текст и TTS</h3><p>Ответ постепенно приходит по SSE и отображается на экране. Браузер озвучивает готовую фразу.</p></div><span class="flow-arrow" aria-hidden="true">→</span></li>
+            <li><span class="flow-number">06</span><div><h3>Воспроизведение</h3><p>Пользователь может остановить ответ или начать новую реплику, чтобы перебить его.</p></div></li>
+          </ol>
+          <div class="flow-definitions">
+            <div><h3>STT</h3><p>Преобразует сказанные слова в текст.</p></div>
+            <div><h3>TTS</h3><p>Синтезирует речь по готовому тексту.</p></div>
+            <div><h3>Streaming</h3><p>Передаёт результат частями: текст ответа появляется до завершения его генерации.</p></div>
+          </div>
+          <button class="back-to-dialog" type="button" data-view="dialog">Вернуться к диалогу</button>
+        </section>
+      </main>
+
+      <aside class="schedule-panel" aria-labelledby="scheduleTitle">
+        <div class="schedule-heading">
+          <h2 id="scheduleTitle">Расписание</h2>
+          <p>Учебные данные</p>
+        </div>
+        <div class="schedule-note">
+          <span class="note-mark" aria-hidden="true">i</span>
+          <p>Демонстрационное расписание и записи хранятся локально в проекте. Google Calendar не подключён.</p>
+        </div>
+        <div id="scheduleRows" class="schedule-rows" aria-live="polite">
+          <div class="schedule-row" data-slot="tomorrow-1830">
+            <span class="calendar-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 3v4M16.5 3v4M4 9.5h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="slot-label">Завтра 18:30</span><span class="slot-status is-free">Свободно</span>
+          </div>
+          <div class="schedule-row" data-slot="tomorrow-1900">
+            <span class="calendar-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 3v4M16.5 3v4M4 9.5h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="slot-label">Завтра 19:00</span><span class="slot-status is-busy">Занято</span>
+          </div>
+          <div class="schedule-row" data-slot="day-after">
+            <span class="calendar-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 3v4M16.5 3v4M4 9.5h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="slot-label">Послезавтра</span><span class="slot-status is-unknown">Нет данных</span>
+          </div>
+        </div>
+        <div id="scheduleResult" class="schedule-result" hidden></div>
+        <div class="schedule-footnote"><span class="footnote-line"></span><p>Помощник сначала проверяет расписание и только потом озвучивает результат.</p></div>
+
+        <section class="booking-card" aria-labelledby="bookingTitle">
+          <div class="booking-heading">
+            <div><h3 id="bookingTitle">Записать клиента</h3><p>Демонстрационная запись на завтра</p></div>
+            <span class="demo-badge">ЛОКАЛЬНО</span>
+          </div>
+          <form id="bookingForm" class="booking-form">
+            <label for="bookingName">Имя клиента</label>
+            <input id="bookingName" name="clientName" type="text" maxlength="80" autocomplete="name" placeholder="Например, Анна" required />
+            <label for="bookingTime">Свободное время</label>
+            <select id="bookingTime" name="time" required>
+              <option value="">Загрузка расписания…</option>
+            </select>
+            <label class="booking-confirmation" for="bookingConfirmed">
+              <input id="bookingConfirmed" name="confirmed" type="checkbox" required />
+              <span>Подтверждаю создание демонстрационной записи</span>
+            </label>
+            <button id="bookingSubmit" class="booking-submit" type="submit">Подтвердить запись</button>
+            <p id="bookingStatus" class="booking-status" role="status" aria-live="polite"></p>
+          </form>
+          <div class="bookings-heading"><h3>Записи</h3><span id="bookingCount" class="booking-count">0</span></div>
+          <ul id="bookingsList" class="bookings-list" aria-live="polite"><li class="booking-empty">Пока нет демонстрационных записей.</li></ul>
+        </section>
+      </aside>
+    </div>
+  </body>
+</html>

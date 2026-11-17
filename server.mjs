@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -6,12 +7,20 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(ROOT, 'public');
-const BOOKINGS_DIR = path.join(ROOT, 'data');
-const BOOKINGS_PATH = path.join(BOOKINGS_DIR, 'demo-bookings.json');
+const DEFAULT_BOOKINGS_PATH = path.join(ROOT, 'data', 'demo-bookings.json');
+const BOOKINGS_PATH = path.resolve(process.env.BOOKINGS_PATH || DEFAULT_BOOKINGS_PATH);
+const BOOKINGS_DIR = path.dirname(BOOKINGS_PATH);
 const PORT = Number.parseInt(process.env.PORT || '3000', 10);
+const APP_ACCESS_PASSWORD = process.env.APP_ACCESS_PASSWORD?.trim();
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const MAX_AUDIO_BYTES = 25_000_000;
 const MAX_JSON_BYTES = 24 * 1024;
 const OPENAI_BASE = 'https://api.openai.com/v1';
+
+if (IS_PRODUCTION && !APP_ACCESS_PASSWORD) {
+  console.error('APP_ACCESS_PASSWORD must be set in production.');
+  process.exit(1);
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -39,6 +48,35 @@ function securityHeaders(res) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Permissions-Policy', 'microphone=(self)');
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+}
+
+function hasAppAccess(req) {
+  if (!APP_ACCESS_PASSWORD) return true;
+  const match = req.headers.authorization?.match(/^Basic\s+(.+)$/i);
+  if (!match) return false;
+  let credentials;
+  try {
+    credentials = Buffer.from(match[1], 'base64').toString('utf8');
+  } catch {
+    return false;
+  }
+  const separator = credentials.indexOf(':');
+  if (separator < 0 || credentials.slice(0, separator) !== 'demo') return false;
+  const supplied = Buffer.from(credentials.slice(separator + 1), 'utf8');
+  const expected = Buffer.from(APP_ACCESS_PASSWORD, 'utf8');
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+function requestAppAccess(req, res) {
+  if (hasAppAccess(req)) return true;
+  securityHeaders(res);
+  res.writeHead(401, {
+    'WWW-Authenticate': 'Basic realm="Учебный голосовой помощник", charset="UTF-8"',
+    'Cache-Control': 'no-store',
+    'Content-Type': 'text/plain; charset=utf-8',
+  });
+  res.end('Требуется доступ к демонстрационному приложению.');
+  return false;
 }
 
 function sendJson(res, status, value) {
@@ -443,6 +481,7 @@ async function serveStatic(req, res) {
 
 const server = http.createServer(async (req, res) => {
   try {
+    if (!requestAppAccess(req, res)) return;
     if (req.method === 'GET' && req.url === '/api/health') {
       return sendJson(res, 200, { ok: true, providerConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()) });
     }
@@ -493,7 +532,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '127.0.0.1', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Voice consultation assistant listening on http://localhost:${PORT}`);
 });
 
